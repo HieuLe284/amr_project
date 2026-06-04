@@ -1,0 +1,10 @@
+# Goal
+string command   # "up", "down", "circle"
+float32 value    # Distance (meters) or angle (radians)
+---
+# Result
+bool success
+string message
+---
+# Feedback
+float32 progress # Quãng đường/Góc đã hoàn thành

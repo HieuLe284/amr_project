@@ -1,0 +1,41 @@
+{
+    "ROS2.distro": "humble",
+    "python.autoComplete.extraPaths": [
+        "/home/hieuubuntu/share/AGV_Robot/install/agv_robot/local/lib/python3.10/dist-packages",
+        "/home/hieuubuntu/ros2_ws/install/turtle_tf2_py/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/turtlesim/local/lib/python3.10/dist-packages",
+        "/home/hieuubuntu/ros2_ws/install/my_turtlesim/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/launch_testing_examples/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_pointcloud_publisher/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_subscriber/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_service/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_publisher/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_client/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_action_server/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_action_client/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_guard_conditions/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_executors/lib/python3.10/site-packages",
+        "/home/hieuubuntu/launch_tutorial/install/launch_tutorial/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/hieuubuntu/share/AGV_Robot/install/agv_robot/local/lib/python3.10/dist-packages",
+        "/home/hieuubuntu/ros2_ws/install/turtle_tf2_py/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/turtlesim/local/lib/python3.10/dist-packages",
+        "/home/hieuubuntu/ros2_ws/install/my_turtlesim/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/launch_testing_examples/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_pointcloud_publisher/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_subscriber/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_service/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_publisher/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_client/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_action_server/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_minimal_action_client/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_guard_conditions/lib/python3.10/site-packages",
+        "/home/hieuubuntu/ros2_ws/install/examples_rclpy_executors/lib/python3.10/site-packages",
+        "/home/hieuubuntu/launch_tutorial/install/launch_tutorial/lib/python3.10/site-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
+}

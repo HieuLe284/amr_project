@@ -1,0 +1,45 @@
+slam_toolbox:
+  ros__parameters:
+    # --- Plugin / Solver ---
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    # --- Sensor ---
+    scan_topic: /agv_scan
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_link
+    mode: mapping
+
+    # QUAN TRỌNG: Đồng bộ thời gian
+    use_sim_time: true
+    scan_queue_size: 15
+
+    # --- Scan Matching ---
+    use_scan_matching: true
+    use_scan_barycenter: true
+    minimum_travel_distance: 0.2
+    minimum_travel_heading: 0.2
+    
+    # --- Loop Closure ---
+    do_loop_closure: true
+    loop_closure_search_distance: 5.0
+    loop_closure_max_error: 0.05
+    minimum_time_interval: 0.5
+    
+    # --- Map publish ---
+    map_update_interval: 1.0
+    resolution: 0.05
+    max_laser_range: 8.0  # Giới hạn tầm xa để tránh nhiễu
+
+    # --- Matcher ---
+    distance_variance_penalty: 0.5
+    angle_variance_penalty: 0.5
+    fine_search_angle_offset: 0.00349
+    coarse_search_angle_offset: 0.349
+    search_space_dimension: 25
+    search_space_resolution: 0.05
