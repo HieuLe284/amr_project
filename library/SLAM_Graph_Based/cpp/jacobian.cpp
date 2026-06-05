@@ -1,11 +1,5 @@
 #include "jacobian.h"
 
-inline double slam::normalizeAngle(double a) {
-    while (a >  M_PI) a -= 2.0 * M_PI;
-    while (a < -M_PI) a += 2.0 * M_PI;
-    return a;
-}
-
 void slam::computeError(
     double xi, double yi, double ti,
     double xj, double yj, double tj,
@@ -86,7 +80,7 @@ void slam::computeJacobians(
     RijT_dRdt[1] = Rij_T[1][0] * dRdt[0] + Rij_T[1][1] * dRdt[1];
 
     // ── A_ij ─────────────────────────────────────────────────────────────
-    //   [ -R_ij^T·R_i^T  |  R_ij^T·dR·dt ]
+    //   [ -R_ij^T·R_i^T   |  R_ij^T·dR·dt ]
     //   [   0    0        |      -1        ]
     A(0,0) = neg_RijT_RiT[0][0];
     A(0,1) = neg_RijT_RiT[0][1];
@@ -99,7 +93,7 @@ void slam::computeJacobians(
     A(2,2) = -1.0;
 
     // ── B_ij ─────────────────────────────────────────────────────────────
-    //   [  R_ij^T·R_i^T  |  0 ]
+    //   [  R_ij^T·R_i^T   |  0 ]
     //   [   0    0        |  1 ]
     double RijT_RiT[2][2];
     for (int r = 0; r < 2; ++r)

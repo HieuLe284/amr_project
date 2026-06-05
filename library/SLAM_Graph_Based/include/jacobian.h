@@ -54,7 +54,11 @@
 namespace slam {
 
 // ── angle normalization ──────────────────────────────────────────────────────
-inline double normalizeAngle(double a);
+inline double normalizeAngle(double a){
+    while (a >  M_PI) a -= 2.0 * M_PI;
+    while (a < -M_PI) a += 2.0 * M_PI;
+    return a;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  2D Rotation matrix R(θ) as 2×2 packed into upper-left of Mat3
