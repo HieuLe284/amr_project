@@ -34,7 +34,6 @@ namespace slam {
 class MapBuilder {
 public:
     MapBuilder() = default;
-
     /**
      * @param resolution  Grid resolution [m/cell]
      * @param width       Grid width  [cells]

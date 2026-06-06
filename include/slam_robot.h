@@ -6,6 +6,7 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/pose_array.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -15,6 +16,7 @@
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2_ros/buffer.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "tf2/LinearMath/Quaternion.h"
 
 // ── Standard library ─────────────────────────────────────────────────────────
 #include <atomic>
@@ -49,8 +51,20 @@ public:
     SlamRobot();
 
 private:
+    // ── angle normalization ──────────────────────────────────────────────────────
+    inline double normalizeAngle(double a){
+        while (a >  M_PI) a -= 2.0 * M_PI;
+        while (a < -M_PI) a += 2.0 * M_PI;
+        return a;
+    }
+
+    void broadcastMapOdomTF(rclcpp::Time now);
+
     // ── SLAM timer: get TF pose → graphSLAMcall → publish graph viz ──────
     void slamTimerCallback();
+
+    void updateMapOdom(double map_x, double map_y, double map_theta,
+                       double odom_x, double odom_y, double odom_theta);
 
     // ── Scan callback: cache LiDAR data, feed MapBuilder continuously ─────
     void scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr scan);
@@ -82,6 +96,8 @@ private:
      * @param x, y, theta  Current pose from TF (map → base_link)
      */
     void graphSLAMcall(double x, double y, double theta);
+
+    double map_odom_x = 0.0, map_odom_y = 0.0, map_odom_theta = 0.0; // map→odom TF (identity)
 
     // ── Publishers ────────────────────────────────────────────────────────
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr         pub_cmd_;

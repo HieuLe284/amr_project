@@ -1,31 +1,6 @@
 #include "include/slam_robot.h"
 
-#include "geometry_msgs/msg/transform_stamped.hpp"
-#include "tf2/LinearMath/Quaternion.h"
-
 using std::placeholders::_1;
-
-// ════════════════════════════════════════════════════════════════════════════
-//  Helper: broadcast map→odom TF (identity — map = odom at origin)
-// ════════════════════════════════════════════════════════════════════════════
-static void broadcastMapOdomTF(
-    rclcpp::Time now,
-    std::shared_ptr<tf2_ros::TransformBroadcaster> broadcaster)
-{
-    geometry_msgs::msg::TransformStamped tf;
-    tf.header.stamp    = now;
-    tf.header.frame_id = "map";
-    tf.child_frame_id  = "odom";
-    tf.transform.translation.x = 0.0;
-    tf.transform.translation.y = 0.0;
-    tf.transform.translation.z = 0.0;
-    tf2::Quaternion q;  q.setRPY(0, 0, 0);
-    tf.transform.rotation.x = q.x();
-    tf.transform.rotation.y = q.y();
-    tf.transform.rotation.z = q.z();
-    tf.transform.rotation.w = q.w();
-    broadcaster->sendTransform(tf);
-}
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Constructor
@@ -94,10 +69,71 @@ SlamRobot::SlamRobot() : Node("slam_robot") {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  SLAM Graph Based
+//  ---------------------------- SLAM Graph Based ----------------------------
 // ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+//  Helper: broadcast map→odom TF (identity — map = odom at origin)
+// ════════════════════════════════════════════════════════════════════════════
+void SlamRobot::broadcastMapOdomTF(rclcpp::Time now)
+{
+    geometry_msgs::msg::TransformStamped tf;
+    tf.header.stamp = now;
+    tf.header.frame_id = "map";
+    tf.child_frame_id = "odom";
+    tf.transform.translation.x = 0.0; 
+    tf.transform.translation.y = 0.0;  
+    tf.transform.translation.z = 0.0;
+    tf2::Quaternion q;
+    q.setRPY(0, 0, 0);            
+    tf.transform.rotation.x = q.x();
+    tf.transform.rotation.y = q.y();
+    tf.transform.rotation.z = q.z();
+    tf.transform.rotation.w = q.w();
+    tf_broadcaster_->sendTransform(tf);
+}
+
+//  2. slamTimerCallback — 5 Hz: tính pose trong map frame
+void SlamRobot::slamTimerCallback()
+{
+    broadcastMapOdomTF(this->now());
+    double ox, oy, otheta; // odom → base_link
+    try{
+        auto tf_odom = tf_buffer_->lookupTransform("odom", "base_link", rclcpp::Time());
+        ox = tf_odom.transform.translation.x;
+        oy = tf_odom.transform.translation.y;
+        tf2::Quaternion q(tf_odom.transform.rotation.x,
+                          tf_odom.transform.rotation.y,
+                          tf_odom.transform.rotation.z,
+                          tf_odom.transform.rotation.w);
+        tf2::Matrix3x3 m(q);
+        double roll, pitch;
+        m.getRPY(roll, pitch, otheta);
+    }
+    catch (tf2::TransformException& ex){
+        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+            "[TF] Cannot get odom→base TF: %s", ex.what());
+        return;
+    }
+
+    graphSLAMcall(ox, oy, otheta);
+}
+
+// ── 3. Sau optimize: cập nhật map→odom ──────────────────────────
+// P_map_odom = P_map_base * inverse(P_odom_base)
+void SlamRobot::updateMapOdom(double map_x, double map_y, double map_theta,
+                                double odom_x, double odom_y, double odom_theta)
+{
+    // inverse(odom_base): ( -cos(θ)*x - sin(θ)*y, sin(θ)*x - cos(θ)*y, -θ )
+    double inv_x = -cos(odom_theta) * odom_x - sin(odom_theta) * odom_y; // = -cos(θ)*ox - sin(θ)*oy
+    double inv_y = sin(odom_theta) * odom_x - cos(odom_theta) * odom_y; // =  sin(θ)*ox - cos(θ)*oy
+    // Tích: map_odom = map_base * inv(odom_base)
+    map_odom_x = map_x + cos(map_theta) * inv_x - sin(map_theta) * inv_y;
+    map_odom_y = map_y + sin(map_theta) * inv_x + cos(map_theta) * inv_y;
+    map_odom_theta = normalizeAngle(map_theta - odom_theta);
+}
+
 void SlamRobot::scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr scan) {
-    broadcastMapOdomTF(this->now(), tf_broadcaster_);
+    broadcastMapOdomTF(this->now());
 
     // Cache LiDAR scan for use in graphSLAMcall (odometry + loop closure)
     cached_scan_ranges_.assign(scan->ranges.begin(), scan->ranges.end());
@@ -135,50 +171,24 @@ void SlamRobot::scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr scan) 
 
     // Cập nhật occupanc grid từ LiDAR
     try {
-        auto tf = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+        // map->odom may be corrected by Graph SLAM
+        auto tf = tf_buffer_->lookupTransform("map", "base_link", rclcpp::Time(scan->header.stamp));
         double px = tf.transform.translation.x;
         double py = tf.transform.translation.y;
-        tf2::Quaternion q(tf.transform.rotation.x, tf.transform.rotation.y,
-                          tf.transform.rotation.z, tf.transform.rotation.w);
+        tf2::Quaternion q(tf.transform.rotation.x,
+                          tf.transform.rotation.y,
+                          tf.transform.rotation.z,
+                          tf.transform.rotation.w);
         double roll, pitch, yaw;
         tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
         std::vector<float> ranges_f(scan->ranges.begin(), scan->ranges.end());
         map_builder_.updateFromRanges(ranges_f, scan->angle_min, scan->angle_increment,
-                                    px, py, yaw);
+                                      px, py, yaw);
     }
     catch (tf2::TransformException& ex){
         RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
             "[TF] Cannot update map from scan: %s", ex.what());
     }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-//  slamTimerCallback — 5 Hz: get TF, call graphSLAMcall
-// ════════════════════════════════════════════════════════════════════════════
-void SlamRobot::slamTimerCallback() {
-    // Broadcast TF map->odom
-    broadcastMapOdomTF(this->now(), tf_broadcaster_);
-
-    double x = 0.0, y = 0.0, theta = 0.0;
-    try {
-        auto tf = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
-        x = tf.transform.translation.x;
-        y = tf.transform.translation.y;
-        tf2::Quaternion q(tf.transform.rotation.x, tf.transform.rotation.y,
-                          tf.transform.rotation.z, tf.transform.rotation.w);
-        tf2::Matrix3x3 m(q);
-        double roll, pitch;
-        m.getRPY(roll, pitch, theta);
-    } catch (tf2::TransformException& ex) {
-        // Nếu không có TF thì warning 5s rồi return
-        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
-            "[TF] Cannot get robot pose: %s", ex.what());
-        return;
-    }
-
-    // nếu có TF thì gọi graphSLAMcall để xử lý SLAM
-    if (rclcpp::ok())
-        graphSLAMcall(x, y, theta);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -231,12 +241,17 @@ void SlamRobot::graphSLAMcall(double x, double y, double theta) {
 
     // ── Step 4: Rebuild map from all optimized poses ──────────────────────
     if (optimized) {
-        slam_graph_.clearMap(); // xóa toàn bộ occupancy grid
+        slam_graph_.clearMap();
         const int N = slam_graph_.pose_graph.numNodes();
-        for (int i = 1; i < N; ++i)
-            slam_graph_.updateMapFromNode(i);
-        RCLCPP_WARN(get_logger(),
-            "[SLAM] Map rebuilt from %d optimized nodes", N);
+        for (int i = 1; i < N; ++i) {
+            const auto& n = slam_graph_.pose_graph.nodes[i];
+            // dùng trực tiếp n.x, n.y, n.theta (map = odom)
+            std::vector<float> rf(n.scan_ranges.begin(), n.scan_ranges.end());
+            map_builder_.updateFromRanges(rf, n.scan_angle_min, n.scan_angle_increment,
+                                          n.x, n.y, n.theta);
+        }
+        // không cần updateMapOdom — map = odom cố định
+        RCLCPP_WARN(get_logger(), "[SLAM] Map rebuilt from %d optimized nodes", N);
     }
 
     // ── Publish graph visualization (PoseArray + MarkerArray) ─────────────
@@ -249,10 +264,14 @@ void SlamRobot::graphSLAMcall(double x, double y, double theta) {
     for (int i = 0; i < N; ++i) {
         const auto& gn = slam_graph_.pose_graph.nodes[i];
         geometry_msgs::msg::Pose p;
+
+        // dùng trực tiếp gn.x, gn.y, gn.theta
         p.position.x = gn.x;
         p.position.y = gn.y;
         p.position.z = 0.05;
+
         tf2::Quaternion q;  q.setRPY(0, 0, gn.theta);
+
         p.orientation.x = q.x();  p.orientation.y = q.y();
         p.orientation.z = q.z();  p.orientation.w = q.w();
         node_msg.poses.push_back(p);
@@ -286,11 +305,13 @@ void SlamRobot::graphSLAMcall(double x, double y, double theta) {
 
     for (const auto& e : slam_graph_.pose_graph.edges) {
         if (e.from >= N || e.to >= N) continue;
+
         geometry_msgs::msg::Point p1, p2;
         p1.x = slam_graph_.pose_graph.nodes[e.from].x;
         p1.y = slam_graph_.pose_graph.nodes[e.from].y; p1.z = 0.02;
         p2.x = slam_graph_.pose_graph.nodes[e.to].x;
-        p2.y = slam_graph_.pose_graph.nodes[e.to].y;   p2.z = 0.02;
+        p2.y = slam_graph_.pose_graph.nodes[e.to].y; p2.z = 0.02;
+
         if (e.is_loop) {
             loop_lines.points.push_back(p1);
             loop_lines.points.push_back(p2);

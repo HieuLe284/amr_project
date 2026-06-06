@@ -27,7 +27,7 @@ def generate_launch_description():
 
     # 3. Chạy node slam_robot (Graph SLAM + Frontier + A* + DWA)
     slam_robot_node = TimerAction(
-        period=3.0,
+        period=5.0,
         actions=[
             Node(
                 package='agv_robot',
