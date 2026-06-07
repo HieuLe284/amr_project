@@ -95,16 +95,20 @@ void SlamRobot::broadcastMapOdomTF(rclcpp::Time now)
 //  2. slamTimerCallback — 5 Hz: tính pose trong map frame
 void SlamRobot::slamTimerCallback()
 {
+    // Lấy pose hiện tại của robot từ TF (odom → base_link)
     broadcastMapOdomTF(this->now());
     double ox, oy, otheta; // odom → base_link
     try{
         auto tf_odom = tf_buffer_->lookupTransform("odom", "base_link", rclcpp::Time());
         ox = tf_odom.transform.translation.x;
         oy = tf_odom.transform.translation.y;
+        // Chuyển quaternion sang góc yaw (θ)
         tf2::Quaternion q(tf_odom.transform.rotation.x,
                           tf_odom.transform.rotation.y,
                           tf_odom.transform.rotation.z,
                           tf_odom.transform.rotation.w);
+        
+        // Truyền (x, y, θ) vào hàm graphSLAMcall()
         tf2::Matrix3x3 m(q);
         double roll, pitch;
         m.getRPY(roll, pitch, otheta);
@@ -114,7 +118,7 @@ void SlamRobot::slamTimerCallback()
             "[TF] Cannot get odom→base TF: %s", ex.what());
         return;
     }
-
+    // Thực hiện Graph-Based SLAM
     graphSLAMcall(ox, oy, otheta);
 }
 
@@ -173,6 +177,8 @@ void SlamRobot::scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr scan) 
     try {
         // map->odom may be corrected by Graph SLAM
         auto tf = tf_buffer_->lookupTransform("map", "base_link", rclcpp::Time(scan->header.stamp));
+
+        // Lấy tọa độ vị trí của robot trên bản đồ 
         double px = tf.transform.translation.x;
         double py = tf.transform.translation.y;
         tf2::Quaternion q(tf.transform.rotation.x,
@@ -180,8 +186,14 @@ void SlamRobot::scanCallback(const sensor_msgs::msg::LaserScan::SharedPtr scan) 
                           tf.transform.rotation.z,
                           tf.transform.rotation.w);
         double roll, pitch, yaw;
+
+        // Lấy hướng quay của robot (yaw)
         tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+
+        // Lấy dữ liệu khoảng cách từ LiDAR
         std::vector<float> ranges_f(scan->ranges.begin(), scan->ranges.end());
+
+        // Cập nhật occupancy grid
         map_builder_.updateFromRanges(ranges_f, scan->angle_min, scan->angle_increment,
                                       px, py, yaw);
     }
@@ -240,13 +252,15 @@ void SlamRobot::graphSLAMcall(double x, double y, double theta) {
     bool optimized = slam_graph_.optimizeIfNeeded();
 
     // ── Step 4: Rebuild map from all optimized poses ──────────────────────
+    // Xây dựng lại toàn bộ bản đồ từ pose graph sau khi SLAM tối ưu hóa.
     if (optimized) {
-        slam_graph_.clearMap();
+        slam_graph_.clearMap(); // Xóa occupancy grid hiện tại
         const int N = slam_graph_.pose_graph.numNodes();
         for (int i = 1; i < N; ++i) {
             const auto& n = slam_graph_.pose_graph.nodes[i];
-            // dùng trực tiếp n.x, n.y, n.theta (map = odom)
             std::vector<float> rf(n.scan_ranges.begin(), n.scan_ranges.end());
+            
+            // Chiếu lại scan này lên bản đồ bằng pose đã được tối ưu hóa bởi Graph SLAM.
             map_builder_.updateFromRanges(rf, n.scan_angle_min, n.scan_angle_increment,
                                           n.x, n.y, n.theta);
         }
@@ -261,19 +275,28 @@ void SlamRobot::graphSLAMcall(double x, double y, double theta) {
     geometry_msgs::msg::PoseArray node_msg;
     node_msg.header.frame_id = "map";
     node_msg.header.stamp    = this->now();
+    
+    // Chuyển các node trong Pose Graph thành PoseArray.
     for (int i = 0; i < N; ++i) {
         const auto& gn = slam_graph_.pose_graph.nodes[i];
         geometry_msgs::msg::Pose p;
-
-        // dùng trực tiếp gn.x, gn.y, gn.theta
+        
+        // Gán vị trí node.
         p.position.x = gn.x;
         p.position.y = gn.y;
         p.position.z = 0.05;
+        
+        // Chuyển góc quay 2D (theta) thành quaternion ROS
+        tf2::Quaternion q; 
+        q.setRPY(0, 0, gn.theta);
 
-        tf2::Quaternion q;  q.setRPY(0, 0, gn.theta);
+        // Gán quaternion vào pose
+        p.orientation.x = q.x(); 
+        p.orientation.y = q.y();
+        p.orientation.z = q.z(); 
+        p.orientation.w = q.w();
 
-        p.orientation.x = q.x();  p.orientation.y = q.y();
-        p.orientation.z = q.z();  p.orientation.w = q.w();
+        // Thêm pose này vào mảng poses
         node_msg.poses.push_back(p);
     }
     pub_graph_nodes_->publish(node_msg);
@@ -287,39 +310,52 @@ void SlamRobot::graphSLAMcall(double x, double y, double theta) {
     del_all.action = visualization_msgs::msg::Marker::DELETEALL;
     edge_msg.markers.push_back(del_all);
 
-    visualization_msgs::msg::Marker odom_lines, loop_lines;
+
+    // Hàm lambda để khởi tạo Marker dạng đường thẳng (LINE_LIST)
+    visualization_msgs::msg::Marker odom_lines, loop_lines; // Tạo 2 marker
     auto initLine = [&](visualization_msgs::msg::Marker& m,
                         const std::string& ns, int id,
-                        float r, float g, float b, float a, float w)
+                        float r, float g, float b, float a, float w) // Hàm lambda initLine
     {
-        m.header.frame_id = "map";
-        m.header.stamp    = node_msg.header.stamp;
-        m.ns = ns;  m.id = id;
+        m.header.frame_id = "map"; // Frame tham chiếu
+        m.header.stamp    = node_msg.header.stamp; // Timestamp
+        m.ns = ns;  
+        m.id = id;
         m.type   = visualization_msgs::msg::Marker::LINE_LIST;
         m.action = visualization_msgs::msg::Marker::ADD;
         m.scale.x = w;
-        m.color.r = r;  m.color.g = g;  m.color.b = b;  m.color.a = a;
+        m.color.r = r;  
+        m.color.g = g;  
+        m.color.b = b;  
+        m.color.a = a;
     };
     initLine(odom_lines, "odom_edges", 0, 0.3f, 0.3f, 1.0f, 0.6f, 0.02f);
     initLine(loop_lines, "loop_edges", 1, 1.0f, 0.2f, 0.2f, 0.9f, 0.04f);
 
+    // Vẽ edges của Pose Graph
     for (const auto& e : slam_graph_.pose_graph.edges) {
         if (e.from >= N || e.to >= N) continue;
+        geometry_msgs::msg::Point p1, p2; // Tạo 2 điểm đầu, điểm cuối
 
-        geometry_msgs::msg::Point p1, p2;
+        // Điểm đầu
         p1.x = slam_graph_.pose_graph.nodes[e.from].x;
-        p1.y = slam_graph_.pose_graph.nodes[e.from].y; p1.z = 0.02;
-        p2.x = slam_graph_.pose_graph.nodes[e.to].x;
-        p2.y = slam_graph_.pose_graph.nodes[e.to].y; p2.z = 0.02;
+        p1.y = slam_graph_.pose_graph.nodes[e.from].y; 
+        p1.z = 0.02;
 
-        if (e.is_loop) {
+        // Điểm cuối 
+        p2.x = slam_graph_.pose_graph.nodes[e.to].x;
+        p2.y = slam_graph_.pose_graph.nodes[e.to].y; 
+        p2.z = 0.02;
+        if (e.is_loop) { // Nếu là loop closure
             loop_lines.points.push_back(p1);
             loop_lines.points.push_back(p2);
-        } else {
+        } else { // Nếu là odometry
             odom_lines.points.push_back(p1);
             odom_lines.points.push_back(p2);
         }
     }
+
+    //Đưa marker vào MarkerArray
     edge_msg.markers.push_back(odom_lines);
     edge_msg.markers.push_back(loop_lines);
     pub_graph_edges_->publish(edge_msg);
