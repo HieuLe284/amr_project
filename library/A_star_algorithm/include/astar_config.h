@@ -61,7 +61,7 @@ struct AStarConfig {
   //  Heuristic: Loại hàm ước lượng (Euclidean - đường chim bay, Manhattan - đường ô bàn cờ, hoặc Diagonal).
   // ================================================================
   HeuristicType heuristic{HeuristicType::EUCLIDEAN};  // Loại heuristic
-  double heuristic_weight{1.0};  // Trọng số hàm ước lượng. Với w ≥ 1.0 (1.0 = optimal, >1.0 = faster)
+  double heuristic_weight;  // Trọng số hàm ước lượng. Với w ≥ 1.0 (1.0 = optimal, >1.0 = faster)
 
   // ================================================================
   //  Obstacle Handling
@@ -71,34 +71,44 @@ struct AStarConfig {
   // Kết hợp với DWA robot_radius = 0.15m → tổng clearance = 0.25m từ tường.
   // Chi phí phạt khi đi gần vật cản. Giúp đường đi của A* "né" xa tường thay vì đi sát sạt vào góc tường.
 
-  double obstacle_penalty{5.0};   // Chi phí thêm khi đi qua cell gần vật cản
-  int    safety_margin{8};        // Vùng đệm an toàn (tính bằng số ô) xung quanh vật cản. 8 × 0.05m = 0.40m — vùng an toàn rộng gấp đôi
+  double obstacle_penalty;   // Chi phí thêm khi đi qua cell gần vật cản
+  int    safety_margin;        // Vùng đệm an toàn (tính bằng số ô) xung quanh vật cản. 8 × 0.05m = 0.40m — vùng an toàn rộng gấp đôi
 
   // ================================================================
   //  Navigation
   // ================================================================
-  double waypoint_tolerance{0.20};  // Khoảng cách để chuyển sang waypoint tiếp theo [m]
-  double goal_tolerance{0.30};      // Khoảng cách sai số cuối cùng khi đến goal [m]
+  double waypoint_tolerance;  // Khoảng cách để chuyển sang waypoint tiếp theo [m]
+  double goal_tolerance;      // Khoảng cách sai số cuối cùng khi đến goal [m]
 
   // ================================================================
   //  Planning
   // ================================================================
   //  lần lặp tối đa để tìm đường (tránh robot bị treo nếu bản đồ quá phức tạp hoặc không có đường đi)
-  int max_iterations{100000};  // Giới hạn số vòng lặp A* (tránh treo)
+  int max_iterations;  // Giới hạn số vòng lặp A* (tránh treo)
 
   // Khi robot bị kẹt, A* sẽ tìm lại đường sau 4s thay vì 10s.
   // Khoảng cách (số bước SLAM) giữa 2 lần tính toán lại đường đi toàn cục.
-  int replan_interval{20};     // Số bước SLAM giữa 2 lần replan định kỳ
+  int replan_interval;     // Số bước SLAM giữa 2 lần replan định kỳ
                                // (20 bước × 200ms = 4 giây)
 
   // ================================================================
   //  Path Simplification
   // ================================================================
-  double simplify_tolerance{0.01};  // Ngưỡng bỏ điểm thẳng hàng [m]
+  double simplify_tolerance;  // Ngưỡng bỏ điểm thẳng hàng [m]
 
-  double max_waypoint_spacing{0.35}; // Khoảng cách tối đa giữa các điểm chốt trên đường đi để DWA bám theo mượt mà hơn.
+  double max_waypoint_spacing; // Khoảng cách tối đa giữa các điểm chốt trên đường đi để DWA bám theo mượt mà hơn.
                                      // Chèn waypoint mới nếu khoảng cách > 0.18 (dày hơn cho góc cua)
 
+    AStarConfig(): 
+      heuristic_weight(1.0),       
+      obstacle_penalty(5.0),        
+      safety_margin(8),                
+      waypoint_tolerance(0.2),                
+      goal_tolerance(0.3),       
+      max_iterations(100000),
+      replan_interval(20),
+      simplify_tolerance(0.01),
+      max_waypoint_spacing(35) {}  
 };
 
 #endif  // ASTAR_CONFIG_H

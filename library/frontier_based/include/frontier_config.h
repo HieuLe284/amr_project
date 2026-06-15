@@ -9,7 +9,7 @@
  */
 struct FrontierConfig {
   // ================================================================
-  //  Frontier Detection Parameters
+  //  Graph-Based SLAM
   // ================================================================
   int min_frontier_size;  // Số cell tối thiểu của một frontier region hợp lệ. Giúp lọc các điểm nhiễu li ti trên bản đồ.
   double max_goal_dist;   // Khoảng cách tối đa (m) để xét một frontier. Robot sẽ bỏ qua các vùng biên quá xa tầm này.
@@ -37,8 +37,8 @@ struct FrontierConfig {
   // ================================================================
   //  Default Constructor — tham số cho AGV nhỏ
   // ================================================================
-  FrontierConfig()
-    : min_frontier_size(5),       
+  FrontierConfig(): 
+      min_frontier_size(5),       
       max_goal_dist(50.0),        
       w_dist(0.7),                
       w_size(0.3),                

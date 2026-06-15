@@ -2,15 +2,15 @@
 
 int slam::LoopClosureDetector::detect(PoseGraph2D& graph, int new_idx) {
     const int N = graph.numNodes();
-    if (new_idx < min_node_gap) return -1;
+    if (new_idx < config.min_node_gap) return -1;
 
     const Node2D& nj = graph.nodes[new_idx];
     if (nj.scan_ranges.empty()) return -1;
 
     int    best_id    = -1;
-    double best_score = correlation_threshold;
+    double best_score = config.correlation_threshold;
 
-    for (int i = 0; i < new_idx - min_node_gap; ++i) {
+    for (int i = 0; i < new_idx - config.min_node_gap; ++i) {
         const Node2D& ni = graph.nodes[i];
         if (ni.scan_ranges.empty()) continue;
 
@@ -19,11 +19,11 @@ int slam::LoopClosureDetector::detect(PoseGraph2D& graph, int new_idx) {
         double dx = nj.x - ni.x;
         double dy = nj.y - ni.y;
         double dist = std::sqrt(dx*dx + dy*dy);
-        if (dist > dist_threshold) continue;
+        if (dist > config.dist_threshold) continue;
 
         // |θ| = |θ_j - θ_i|
         double dtheta = std::fabs(normalizeAngle(nj.theta - ni.theta));
-        if (dtheta > angle_threshold) continue;
+        if (dtheta > config.angle_threshold) continue;
 
         // ── Stage 2: Scan correlation ─────────────────────────────────
         double score = scanCorrelation(ni.scan_ranges, nj.scan_ranges);
@@ -58,7 +58,7 @@ int slam::LoopClosureDetector::detect(PoseGraph2D& graph, int new_idx) {
     // Tạo loop-closure edge j → best_id
     graph.addEdge(best_id, new_idx,
                   zx, zy, zt,
-                  omega_xy, omega_xy, omega_theta,
+                  config.omega_xy, config.omega_xy, config.omega_theta,
                   /*loop=*/true);
 
     return best_id;

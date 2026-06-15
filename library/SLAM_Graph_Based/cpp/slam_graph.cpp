@@ -31,7 +31,7 @@ int slam::SlamGraph::addOdometryNode(double x, double y, double theta,
   double dist = std::sqrt(dx * dx + dy * dy);
   double dtheta = std::fabs(normalizeAngle(theta - prev.theta));
   // Kiểm tra ngưỡng từ Lidar => Robot
-  if (dist < min_travel_dist && dtheta < min_travel_angle)
+  if (dist < config.min_travel_dist && dtheta < config.min_travel_angle)
     return -1;
 
   // Thêm node 2D mới vào pose_graph.nodes
@@ -51,8 +51,8 @@ int slam::SlamGraph::addOdometryNode(double x, double y, double theta,
   double zt = normalizeAngle(theta - prev.theta);
 
   // Thêm edge odom với information matrix Ω_ij = diag(odom_omega_xy, odom_omega_xy, odom_omega_theta)
-  pose_graph.addEdge(prev_idx, new_idx, zx, zy, zt, odom_omega_xy,
-                     odom_omega_xy, odom_omega_theta,
+  pose_graph.addEdge(prev_idx, new_idx, zx, zy, zt, config.odom_omega_xy,
+                     config.odom_omega_xy, config.odom_omega_theta,
                      /*loop=*/false);
 
   return new_idx;
@@ -77,7 +77,7 @@ bool slam::SlamGraph::optimizeIfNeeded() {
     return false;
 
   // Sử dụng phương pháp Gauss-Newton để tối ưu hóa pose graph nếu có loop closure mới
-  GaussNewtonSolver::solve(pose_graph, gn_iterations);
+  GaussNewtonSolver::solve(pose_graph, config.gn_iterations);
   new_loop_this_step_ = false;
   return true;
 }

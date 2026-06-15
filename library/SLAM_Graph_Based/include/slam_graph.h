@@ -41,6 +41,7 @@
 #include "loop_closure_detector.h"
 #include "map_builder.h"
 #include "jacobian.h"
+#include "slam_config.h"
 
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -55,17 +56,6 @@ public:
     // ── Trạng thái công khai (Public state) ───────────────────────────────
     PoseGraph2D          pose_graph;             // Pose Graph: G = (V, E)
     int                  loop_closure_count_{0}; // Tổng số Loop Closure đã phát hiện
-
-    // ── Trọng số ma trận thông tin của cạnh Odometry ──────────────────────
-    double odom_omega_xy{50.0};    // Trọng số theo phương x và y
-    double odom_omega_theta{80.0}; // Trọng số theo góc θ
-
-    // ── Số vòng lặp Gauss-Newton mỗi lần tối ưu ───────────────────────────
-    int gn_iterations{10};
-
-    // ── Ngưỡng di chuyển tối thiểu trước khi tạo node mới ─────────────────
-    double min_travel_dist{0.30};    // Khoảng cách tối thiểu [m]
-    double min_travel_angle{0.15};   // Góc quay tối thiểu [rad]
 
     SlamGraph() = default;
 
@@ -136,6 +126,7 @@ public:
     bool optimizeIfNeeded();
 
 private:
+    SlamConfig           config;
     LoopClosureDetector  loop_detector_;             // Bộ phát hiện Loop Closure
     MapBuilder*          map_builder_{nullptr};      // Con trỏ tới MapBuilder
     bool                 new_loop_this_step_{false}; // Đánh dấu có Loop Closure mới trong bước hiện tại hay không

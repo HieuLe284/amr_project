@@ -64,12 +64,9 @@ target_include_directories(tf2_listener PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-# Node 3: slam_robot — Graph SLAM / Pose Graph Optimization + tránh vật cản
+# Node 3: slam_robot — Graph SLAM / Pose Graph Optimization (pure SLAM, no exploration)
 file(GLOB_RECURSE GRAPH_SLAM_SRCS "library/SLAM_Graph_Based/cpp/*.cpp")
-file(GLOB_RECURSE DWA_SRCS "library/DWA/cpp/*.cpp")
-file(GLOB_RECURSE FRONTIER_SRCS "library/frontier_based/cpp/*.cpp")
-file(GLOB_RECURSE ASTAR_SRCS "library/A_star_algorithm/cpp/*.cpp")
-add_executable(slam_robot src/slam_robot.cpp ${GRAPH_SLAM_SRCS} ${DWA_SRCS} ${FRONTIER_SRCS} ${ASTAR_SRCS})
+add_executable(slam_robot src/slam_robot.cpp ${GRAPH_SLAM_SRCS})
 ament_target_dependencies(slam_robot
   rclcpp
   sensor_msgs
@@ -81,6 +78,24 @@ ament_target_dependencies(slam_robot
 )
 target_include_directories(slam_robot PUBLIC
   library/SLAM_Graph_Based/include
+  ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# Node 4: autonomous_exploration — Frontier, A*, DWA
+file(GLOB_RECURSE DWA_SRCS "library/DWA/cpp/*.cpp")
+file(GLOB_RECURSE FRONTIER_SRCS "library/frontier_based/cpp/*.cpp")
+file(GLOB_RECURSE ASTAR_SRCS "library/A_star_algorithm/cpp/*.cpp")
+add_executable(autonomous_exploration src/autonomous_exploration.cpp ${DWA_SRCS} ${FRONTIER_SRCS} ${ASTAR_SRCS})
+ament_target_dependencies(autonomous_exploration
+  rclcpp
+  sensor_msgs
+  geometry_msgs
+  nav_msgs
+  tf2_ros
+  tf2_geometry_msgs
+  visualization_msgs
+)
+target_include_directories(autonomous_exploration PUBLIC
   library/DWA/include
   library/frontier_based/include
   library/A_star_algorithm/include
@@ -108,6 +123,7 @@ install(TARGETS
   action_server
   action_robot
   slam_robot
+  autonomous_exploration
   navigation_robot
   DESTINATION lib/${PROJECT_NAME}
 )

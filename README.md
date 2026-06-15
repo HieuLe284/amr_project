@@ -1,45 +1,144 @@
 # ROS2 AGV Robot
+## Tổng quan
+Dự án AGV Robot là hệ thống robot tự hành được phát triển trên ROS 2, có khả năng tự xây dựng bản đồ, tự khám phá môi trường chưa biết và tự điều hướng mà không cần bản đồ có sẵn.
 
-ROS2 AGV robot demo using Gazebo and RViz
-Sử dụng các tutorial như:
-Topic: publish & subscribe
-TF: publish & lookup
-Parameter
-Service
-Action
-Launch files
-URDF & XACRO
-Gazebo & RViz
-Lidar sử dụng theo thuật toán sau:
+Hệ thống có các Components cơ bản dùng để kiểm tra di chuyển test topic, TF,...
+
+Hệ thống sử dụng Graph-Based SLAM để tạo bản đồ Occupancy Grid, Frontier Exploration để lựa chọn khu vực cần khám phá, A* để lập kế hoạch đường đi và DWA để điều khiển robot di chuyển an toàn trong môi trường.
+
+Luồng xử lý:
+
+LiDAR → Graph SLAM → Occupancy Grid → Frontier Exploration → A* → DWA → Robot
+
+## Tính năng
+### ROS2 Components:
+- Topic: publish & subscribe
+- TF: publish & lookup
+- Parameter
+- Service
+- Action
+- Launch files
+- URDF & XACRO
+- Gazebo & RViz
+
+### Core Algorithms:
 - SLAM: dùng thuật toán Graph SLAM / Pose Graph Optimization: Tạo map, xác định vị trí của robot
 - Exploration: dùng thuật toán Frontier-based: Chọn đường tốt nhất ( đường mà map chưa mở ) => Quyết định đi đâu tiếp theo 
 - Global Planner: dùng thuật toán A star (A*) algorithm: Tìm đường tối ưu từ robot -> goal 
 - Local Planner: dùng thuật toán Dynamic Window Approach (DWA): Điều khiển robot đi theo thực tế ( tránh vật cản realtime )
 
-Navigation sử dụng theo thuật toán Dynamic Window Approach (DWA)
-
-# Yêu cầu
+## Yêu cầu
 
 - ROS2 Humble
 - Gazebo (v11)
 - RViz2
 
-# Tạo workspace
+## AGV Pipeline
+
+```mermaid
+flowchart TD
+    %% Sensors
+    L[LaserScan] --> SC[scanCallback]
+    SC --> CS[Cached LaserScan]
+    SC --> MB[MapBuilder updateFromRanges]
+    
+    %% Map Builder Timer
+    MB --> MAPT[mapBuilderTimerCallback]
+    MAPT --> CG[Cached OccupancyGrid]
+    MAPT --> MP[/map publish/]
+
+    %% SLAM Timer
+    CS --> SLAMT[slamTimerCallback]
+    SLAMT --> G[graphSLAMcall]
+    G --> GO[update map_odom TF]
+    GO --> TF[/Broadcast map->odom/]
+
+    %% Frontier Timer
+    CG --> FT[frontierTimerCallback]
+    FT --> FE[slam_exploration]
+    FE --> FG[Frontier goal]
+
+    %% Global Planner Timer
+    FG --> AT[globalPlannerTimerCallback]
+    CG --> AT
+    AT --> AP[slam_globalPlanner]
+    AP --> PATH[cached_global_path_]
+    AP --> GP[/global_path publish/]
+    AP --> WP[/astar_waypoints publish/]
+
+    %% Local Planner Timer
+    PATH --> DT[localPlannerTimerCallback]
+    CS --> DT
+    DT --> SL[slam_localPlanner]
+    SL --> SD{Stuck Detected?}
+    SD -->|Yes| SR[Stuck Recovery]
+    SD -->|No| DWA[DWA computeVelocity]
+    SR --> CMD[/cmd_vel publish/]
+    DWA --> CMD
+```
+
+## Demo
+```bash
+
+
+
+```
+
+## Repository Structure
+``` bash
+AGV_Robot/
+├── action/
+├── config/
+├── include/
+│   ├── autonomous_exploration.h
+│   └── slam_robot.h
+│
+├── launch/
+│   ├── agv_robot.launch.py
+│   ├── autonomous_slam.launch.py
+│   ├── gazebo.launch.py
+│   ├── navigation.launch.py
+│   ├── rviz2.launch.py
+│   └── slam.launch.py
+├── library/
+│   ├── Graph_SLAM/
+│   ├── Frontier_Exploration/
+│   ├── AStar/
+│   └── DWA/
+│
+├── map/
+├── rviz/
+├── src/
+│   ├── action_robot.cpp
+│   ├── action_server.cpp
+│   ├── autonomous_exploration.cpp
+│   ├── navigation_robot.cpp
+│   ├── robot_controller.cpp
+│   ├── slam_robot.cpp
+│   └── tf2_listener.cpp
+│
+├── urdf/
+├── worlds/
+└── README.md
+```
+
+## Tạo workspace
 
 ```bash
-cd ...                  #folder lưu workspace
+cd ...                 
 mkdir -p ~/agv_robot
 cd agv_robot
-
-# Build
-rosdep install-i--from-path src--rosdistro humble-y
+```
+### Build
+```bash
+rosdep install -i --from-path src --rosdistro humble -y
 colcon build
 . install/setup.bash
 ```
 
-# Các chương trình chạy test
+## Các chương trình chạy test
 
-# Điều khiển robot
+### Điều khiển robot
 
 ```bash
 # Trong terminal 1
@@ -47,7 +146,6 @@ ros2 launch agv_robot gazebo.launch.py
 
 # Trong terminal 2 (điều khiển robot)
 . install/setup.bash && ros2 run agv_robot robot_controller
-
 
 # Trong terminal 3 (điều khiển action server)
 . install/setup.bash && ros2 run agv_robot action_server
@@ -58,29 +156,16 @@ ros2 launch agv_robot gazebo.launch.py
 . install/setup.bash && ros2 action send_goal /move_robot agv_robot/action/MoveCmd "{command: 'circle', value: 1.37}" # Robot sẽ đi theo hình tròn với góc 1.37 radian
 ```
 
-# SLAM
+### SLAM
 ```bash
 #Terminal
-ros2 launch agv_robot full_slam.launch.py
+ros2 launch agv_robot autonomous_slam.launch.py
 
-# Terminal 1
-ros2 launch agv_robot gazebo.launch.py
-
-# Terminal 2
-. install/setup.bash && ros2 launch agv_robot slam.launch.py
-
-# Terminal 3 - Mở RViz với config sẵn
-. install/setup.bash && rviz2 -d /home/hieuubuntu/share/AGV_Robot/rviz/slam.rviz
-. install/setup.bash && rviz2 -d /home/hieu/Hieu/Project/AGV_Robot/rviz/slam.rviz
-
-# Terminal 4 — Chạy Graph SLAM + tránh vật cản
-. install/setup.bash && ros2 run agv_robot slam_robot
-
-# Terminal 5 - Lưu file bản đồ
+# Terminal 2 - Lưu file bản đồ
 . install/setup.bash && ros2 run nav2_map_server map_saver_cli -f /home/hieuubuntu/share/AGV_Robot/map/map
 ```
 
-# Navigation
+### Navigation
 
 ```bash
 cd ~/share/AGV_Robot
@@ -109,18 +194,18 @@ cd experiment_rooms/worlds/room1
 gazebo world_dynamic.model
 ```
 
-# Xóa build, log, install
+### Xóa build, log, install
 
 ```bash
 rm -rf build install log
 ```
 
-# remote-SSH WINDOW to UBUNTU
+### remote-SSH WINDOW to UBUNTU
 ```bash
 export DISPLAY=:0
 ```
 
-# Tạo ảnh từ file .gv
+### Tạo ảnh từ file .gv
 ```bash
 dot -Tpng graph_slam_diagram.gv -o graph_slam_diagram.png
 dot -Tsvg graph_slam_diagram.gv -o graph_slam_diagram.svg
@@ -135,19 +220,28 @@ dot -Tpng dwa_algorithm_diagram.gv -o dwa_algorithm_diagram.png
 dot -Tsvg dwa_algorithm_diagram.gv -o dwa_algorithm_diagram.svg
 ```
 
-# Các lệnh debug:
-
+### Các lệnh debug:
 ```bash
 ros2 run rqt_console rqt_console
 rqt
-ros2 topic echo /joint_states                                # Xem dữ liệu encoder / bánh xe / motor
-ros2 topic echo /scan                                       # Xem dữ liệu / Lidar
-ros2 topic echo /cmd_vel                                    # Xem tín hiệu điều khiển / output / motor 
+ros2 topic list
+ros2 node list
+ros2 node info /slam_node
+ros2 topic hz /scan
+ros2 topic hz /cmd_vel
+ros2 topic bw /scan
+ros2 topic echo /tf_static --once
+ros2 topic echo /odom
+ros2 topic echo /map
+ros2 topic echo /joint_states                                
+ros2 topic echo /scan                                       
+ros2 topic echo /cmd_vel                                    
 ros2 topic echo /slam_robot/loop_closure_event
 ros2 topic echo /agv_scan --once
 ros2 topic echo /tf --once
 ros2 topic echo /clock --once
 ros2 run tf2_ros tf2_echo map base_link
+ros2 run tf2_ros tf2_echo map odom
 ros2 run tf2_ros tf2_echo odom base_link
 ros2 run tf2_ros tf2_monitor
 ros2 run tf2_tools view_frames
@@ -156,23 +250,24 @@ ros2 param get /robot_state_publisher use_sim_time
 ros2 param get /slam_node use_sim_time
 ros2 param get /dwa_node use_sim_time
 ros2 param get /frontier_node use_sim_time
-
 ```
-
-# Các lệnh git:
+## Các lệnh git:
 ```bash
 cd ~/Hieu/Project/AGV_Robot
+```
 
-# máy chính
+### git
+```bash
+git clone https://github.com/HieuLe284/AGV_Robot.git
 git status
+git pull
 git add .
 git commit -m "..."
 git push
-
-# máy phụ
-git clone https://github.com/HieuLe284/AGV_Robot.git
-git pull
-git add .
-git commit -m "Update DWA planner"
-git push
 ```
+
+## Roadmap
+- Thêm khi chỉ vào 1 điểm ở trên map là robot sẽ tự đi đến
+- Sử dụng ICP Scan Matching thay vì Odometry Edge đơn giản như hiện tại
+- Sử dụng costmap cả Local lẫn Global cho các thuật toán A* và DWA 
+- Thực hiện trên thực tế bằng Rapsberry Pi 4 và STM32 sẽ điều khiển làm tầng dưới

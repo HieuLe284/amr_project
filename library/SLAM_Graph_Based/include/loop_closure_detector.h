@@ -50,6 +50,7 @@
 
 #include "pose_graph.h"
 #include "jacobian.h"
+#include "slam_config.h"
 
 #include <vector>
 #include <cmath>
@@ -58,17 +59,6 @@ namespace slam {
 
 class LoopClosureDetector {
 public:
-    // ── Các tham số có thể điều chỉnh ( Tunable parameters ) ─────────────────
-    double dist_threshold{2.0};          // Ngưỡng khoảng cách Euclid lớn nhất giữa hai node [m]
-    double angle_threshold{1.2};         // Ngưỡng chênh lệch góc lớn nhất giữa hai node [rad]
-    double correlation_threshold{0.80};  // Ngưỡng tương quan scan tối thiểu [0,1]
-    int    min_node_gap{10};             // Khoảng cách chỉ số node tối thiểu nhằm tránh so khớp với các node quá gần về thời gian
-
-    // ── Trọng số ma trận thông tin cho cạnh Loop Closure ─────────────────────
-    // Giá trị lớn hơn cạnh odometry → thể hiện mức độ tin cậy cao hơn đối với ràng buộc đóng vòng lặp
-    double omega_xy{200.0};
-    double omega_theta{400.0};
-
     /**
      * @brief Phát hiện đóng vòng lặp (Loop Closure) cho một node mới được thêm vào đồ thị.
      * Hàm sẽ duyệt qua tất cả các node cũ hơn (cách ít nhất min_node_gap node) và áp dụng bộ lọc hai giai đoạn:
@@ -82,6 +72,7 @@ public:
     int detect(PoseGraph2D& graph, int new_idx);
 
 private:
+    SlamConfig config;
     /**
      * @brief Tính độ tương quan chéo đã chuẩn hóa giữa hai vector 
      * dữ liệu quét khoảng cách (range scan).
