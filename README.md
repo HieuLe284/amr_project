@@ -78,11 +78,8 @@ flowchart TD
 ```
 
 ## Demo
-```bash
+![DEMO](demo.gif)
 
-
-
-```
 
 ## Repository Structure
 ``` bash
@@ -162,7 +159,7 @@ ros2 launch agv_robot gazebo.launch.py
 ros2 launch agv_robot autonomous_slam.launch.py
 
 # Terminal 2 - Lưu file bản đồ
-. install/setup.bash && ros2 run nav2_map_server map_saver_cli -f /home/hieuubuntu/share/AGV_Robot/map/map
+. install/setup.bash && ros2 run nav2_map_server map_saver_cli -f /home/hieu/Hieu/Project/AGV_Robot/map/map
 ```
 
 ### Navigation
