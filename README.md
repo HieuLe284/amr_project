@@ -77,8 +77,10 @@ flowchart TD
     DWA --> CMD
 ```
 
-## Demo
-![DEMO](demo.gif)
+## Hình ảnh
+Demo project di chuyển mô phỏng trong rviz2 
+
+![Autonomous SLAM](autonomous_slam.gif)
 
 
 ## Repository Structure

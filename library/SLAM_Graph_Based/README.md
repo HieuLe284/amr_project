@@ -58,17 +58,16 @@ cpp/
 ### Build
 ```bash
 # Terminal
-ros2 launch agv_robot autonomous_slam.launch.py
+ros2 launch agv_robot slam.launch.py
 
 # Terminal 2:
 . install/setup.bash && ros2 run agv_robot robot_controller
 ```
 
 ### Hình ảnh
+Demo thuật toán SLAM ở trong Rviz2
 
-```cpp
-
-```
+![SLAM](slam.gif)
 
 ## API
 
