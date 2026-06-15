@@ -193,32 +193,6 @@ cd experiment_rooms/worlds/room1
 gazebo world_dynamic.model
 ```
 
-### Xóa build, log, install
-
-```bash
-rm -rf build install log
-```
-
-### remote-SSH WINDOW to UBUNTU
-```bash
-export DISPLAY=:0
-```
-
-### Tạo ảnh từ file .gv
-```bash
-dot -Tpng graph_slam_diagram.gv -o graph_slam_diagram.png
-dot -Tsvg graph_slam_diagram.gv -o graph_slam_diagram.svg
-
-dot -Tpng frontier_based_diagram.gv -o frontier_based_diagram.png
-dot -Tsvg frontier_based_diagram.gv -o frontier_based_diagram.svg
-
-dot -Tpng astar_algorithm_diagram.gv -o astar_algorithm_diagram.png
-dot -Tsvg astar_algorithm_diagram.gv -o astar_algorithm_diagram.svg
-
-dot -Tpng dwa_algorithm_diagram.gv -o dwa_algorithm_diagram.png
-dot -Tsvg dwa_algorithm_diagram.gv -o dwa_algorithm_diagram.svg
-```
-
 ### Các lệnh debug:
 ```bash
 ros2 run rqt_console rqt_console
@@ -249,20 +223,6 @@ ros2 param get /robot_state_publisher use_sim_time
 ros2 param get /slam_node use_sim_time
 ros2 param get /dwa_node use_sim_time
 ros2 param get /frontier_node use_sim_time
-```
-## Các lệnh git:
-```bash
-cd ~/Hieu/Project/AGV_Robot
-```
-
-### git
-```bash
-git clone https://github.com/HieuLe284/AGV_Robot.git
-git status
-git pull
-git add .
-git commit -m "..."
-git push
 ```
 
 ## Roadmap
