@@ -1,6 +1,6 @@
-# ROS2 AGV Robot
+# ROS2 AMR Robot
 ## Tổng quan
-Dự án AGV Robot là hệ thống robot tự hành được phát triển trên ROS 2, có khả năng tự xây dựng bản đồ, tự khám phá môi trường chưa biết và tự điều hướng mà không cần bản đồ có sẵn.
+Dự án AMR Robot là hệ thống robot tự hành được phát triển trên ROS 2, có khả năng tự xây dựng bản đồ, tự khám phá môi trường chưa biết và tự điều hướng mà không cần bản đồ có sẵn.
 
 Hệ thống có các Components cơ bản dùng để kiểm tra di chuyển test topic, TF,...
 
